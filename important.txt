@@ -1,0 +1,2 @@
+set PYTHONPATH=%cd%
+ run that each time for things to work

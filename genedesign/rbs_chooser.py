@@ -11,6 +11,8 @@ class RBSChooser:
 
     def __init__(self):
         self.rbsOptions = []
+        self.translator = Translate()
+        self.translator.initiate()
 
     def initiate(self) -> None:
         """
@@ -45,7 +47,7 @@ class RBSChooser:
         genes_info = extract_genes_info(genbank_file)
         file_path = 'genedesign/data/511145-WHOLE_ORGANISM-integrated.txt'
         top_5_percent_list = proteomics_prune(file_path)
-        translator = Translate()
+        translator = self.translator
         # Loop through top_5_percent_list and genes_info to create RBSOption objects
         for locus_tag, abundance in top_5_percent_list:
             if locus_tag in genes_info:
@@ -117,17 +119,16 @@ class RBSChooser:
             raise ValueError("CDS sequence length must be a multiple of 3 for valid translation.")
 
         # Check if there are any RBS options to work with
-        if not self.rbs_options_list:
+        if not self.rbsOptions:
             raise ValueError("No RBS options are available to choose from.")
 
         # Filter out ignored RBS options
-        valid_rbs_options = [rbs_option for rbs_option in self.rbs_options_list if rbs_option not in ignores]
+        valid_rbs_options = [rbs_option for rbs_option in self.rbsOptions if rbs_option not in ignores]
         if not valid_rbs_options:
             raise ValueError("No valid RBS options remain after applying the ignore filter.")
 
         # Initialize the Translate object and translate the first 6 amino acids of the input CDS
-        translator = Translate()
-        translator.initiate()
+        translator = self.translator
         input_first_six_aas = translator.run(cds[:18])  # 18 bases for 6 amino acids
 
         best_rbs = None
@@ -138,7 +139,7 @@ class RBSChooser:
             edit_distance = calculate_edit_distance(input_first_six_aas, rbs_option.first_six_aas)
 
             # Calculate the hairpin count for the UTR + CDS sequence of the RBS option
-            hairpin_count = hairpin_counter(rbs_option.utr + rbs_option.cds)
+            hairpin_count = hairpin_counter(rbs_option.utr + rbs_option.cds)[0]
 
             # Combine the two scores; prioritize the edit distance, then hairpin count
             # doing it this way because if theres a high edit distance then there will be no binding so nothing will happen in the first place

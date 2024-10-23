@@ -1,5 +1,6 @@
 from genedesign.rbs_chooser import RBSChooser
 from genedesign.models.transcript import Transcript
+import csv
 
 class TranscriptDesigner:
     """
@@ -7,25 +8,29 @@ class TranscriptDesigner:
     """
 
     def __init__(self):
-        self.aminoAcidToCodon = {}
+        self.codonUsage = {}
         self.rbsChooser = None
 
     def initiate(self) -> None:
         """
-        Initializes the codon table and the RBS chooser.
+        Initializes the codon map and the RBS chooser.
         """
         self.rbsChooser = RBSChooser()
         self.rbsChooser.initiate()
+        # Open the file and read its contents
+        with open('genedesign/data/codon_usage.txt', 'r') as file:
+            reader = csv.reader(file, delimiter='\t')
 
-        # Codon table with highest CAI codon for each amino acid (for E. coli)
-        self.aminoAcidToCodon = {
-            'A': "GCG", 'C': "TGC", 'D': "GAT", 'E': "GAA", 'F': "TTC",
-            'G': "GGT", 'H': "CAC", 'I': "ATC", 'K': "AAA", 'L': "CTG",
-            'M': "ATG", 'N': "AAC", 'P': "CCG", 'Q': "CAG", 'R': "CGT",
-            'S': "TCT", 'T': "ACC", 'V': "GTT", 'W': "TGG", 'Y': "TAC"
-        }
+            for row in reader:
+                codon, amino_acid, relative_frequency, *_ = row
+                # Store the relative frequency for each codon under its corresponding amino acid
+                if amino_acid not in self.codonUsage:
+                    self.codonUsage[amino_acid] = {}
+        
+                self.codonUsage[amino_acid][codon] = float(relative_frequency)
 
     def run(self, peptide: str, ignores: set) -> Transcript:
+        #TODO implement monte carlo selection for first group, some of this may need to be done in initiate?
         """
         Translates the peptide sequence to DNA and selects an RBS.
         

@@ -2,6 +2,10 @@ from genedesign.rbs_chooser import RBSChooser
 from genedesign.models.transcript import Transcript
 import csv
 import random
+from genedesign.checkers.codon_checker import CodonChecker
+from genedesign.checkers.forbidden_sequence_checker import ForbiddenSequenceChecker
+from genedesign.checkers.hairpin_checker import *
+from genedesign.checkers.internal_promoter_checker import PromoterChecker
 
 class TranscriptDesigner:
     """
@@ -12,7 +16,9 @@ class TranscriptDesigner:
         self.codonUsage = {}
         self.rbsChooser = None
         self.codonLists = {}
-
+        self.codonChecker = None
+        self.forbiddenSeqChecker = None
+        self.PromoterChecker = None
     def initiate(self) -> None:
         """
         Initializes the codon map and the RBS chooser.
@@ -31,9 +37,15 @@ class TranscriptDesigner:
         
                 self.codonUsage[amino_acid][codon] = float(relative_frequency)
         self._generate_codon_lists()
+        # boot up checkers
+        self.codonChecker = CodonChecker()
+        self.codonChecker.initiate()
+        self.forbiddenSeqChecker = ForbiddenSequenceChecker()
+        self.forbiddenSeqChecker.initiate()
+        self.PromoterChecker = PromoterChecker()
+        self.PromoterChecker.initiate()
 
     def run(self, peptide: str, ignores: set) -> Transcript:
-        #TODO implement monte carlo selection for first group, some of this may need to be done in initiate?
         """
         Translates the peptide sequence to DNA and selects an RBS.
         
@@ -44,6 +56,10 @@ class TranscriptDesigner:
         Returns:
             Transcript: The transcript object with the selected RBS and translated codons.
         """
+        # put codons in here and then ''.join() when needed
+        codons = self.get_initial_cds(peptide)
+        # TODO implement sliding window search with prev codons, curr window, and downstream stuff, already set up monster checker
+        # TODO test get_initial_cds
 
 
         # Choose an RBS
@@ -80,7 +96,29 @@ class TranscriptDesigner:
         random.seed(1738)
         codon = random.choice(self.codonLists[aa])
         return codon
-
+    
+    def get_initial_cds(self, peptide : str):
+        good_cds = False
+        while not good_cds:
+            codons = []
+            for x in range(2):
+                aa = peptide[x]
+                codon = self.guided_random(aa)
+                codons.extend(codon)
+            good_cds = self.monster_checker(codons)
+        return codons
+            
+    
+    def monster_checker(self, cds) -> bool:
+        cds_str = ''.join(cds)
+        # bool is 0th index in returned tuple
+        codon_checker_result = self.codonChecker.run(cds)[0]
+        forbidden_seq_checker_result = self.forbiddenSeqChecker.run(cds_str)[0]
+        hairpin_checker_result = hairpin_checker(cds_str)[0]
+        promoter_checker_result = self.PromoterChecker.run(cds_str)[0]
+        if codon_checker_result and forbidden_seq_checker_result and hairpin_checker_result and promoter_checker_result:
+            return True
+        return False
 if __name__ == "__main__":
     # Example usage of TranscriptDesigner
     peptide = "MYPFIRTARMTV"

@@ -1,6 +1,7 @@
 from genedesign.rbs_chooser import RBSChooser
 from genedesign.models.transcript import Transcript
 import csv
+import random
 
 class TranscriptDesigner:
     """
@@ -43,23 +44,15 @@ class TranscriptDesigner:
         Returns:
             Transcript: The transcript object with the selected RBS and translated codons.
         """
-        # Translate peptide to codons
-        codons = [self.aminoAcidToCodon[aa] for aa in peptide]
 
-        # Append the stop codon (TAA in this case)
-        codons.append("TAA")
-
-        # Build the CDS from the codons
-        cds = ''.join(codons)
 
         # Choose an RBS
-        selectedRBS = self.rbsChooser.run(cds, ignores)
+        # selectedRBS = self.rbsChooser.run(cds, ignores)
 
         # Return the Transcript object
-        return Transcript(selectedRBS, peptide, codons)
+        # return Transcript(selectedRBS, peptide, codons)
     
     def _generate_codon_lists(self):
-        #TODO write tests for this to make sure it works
         """
         Creates a 100-element list of codons for each amino acid where codons appear proportional to their relative frequency.
         """
@@ -82,6 +75,11 @@ class TranscriptDesigner:
 
             # Store the codon list for the amino acid
             self.codonLists[amino_acid] = codon_list
+    
+    def guided_random(self, aa : str) -> str:
+        random.seed(1738)
+        codon = random.choice(self.codonLists[aa])
+        return codon
 
 if __name__ == "__main__":
     # Example usage of TranscriptDesigner

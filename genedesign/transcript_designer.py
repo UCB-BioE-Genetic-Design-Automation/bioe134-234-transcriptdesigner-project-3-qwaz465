@@ -98,8 +98,9 @@ class TranscriptDesigner:
         return codon
     
     def get_initial_cds(self, peptide : str):
+        #TODO should have no error, return best one
         good_cds = False
-        for x in range(20):
+        for x in range(100):
             codons = []
             for x in range(2):
                 aa = peptide[x]
@@ -113,13 +114,17 @@ class TranscriptDesigner:
             
     
     def monster_checker(self, cds) -> bool:
+        #TODO also return specific values 
         cds_str = ''.join(cds)
         # bool is 0th index in returned tuple
-        codon_checker_result = self.codonChecker.run(cds)[0]
-        forbidden_seq_checker_result = self.forbiddenSeqChecker.run(cds_str)[0]
+        codon_checker_result = self.codonChecker.run(cds)
+        codon_checker_pass =codon_checker_result[0]
+        cai = codon_checker_result[3] 
+        forbidden_seq_checker_result = self.forbiddenSeqChecker.run(cds_str)
+        forbidden_seq_result = forbidden_seq_checker_result[0]
         hairpin_checker_result = hairpin_checker(cds_str)[0]
-        
         promoter_checker_result = self.PromoterChecker.run(cds_str)[0]
+        
         if codon_checker_result and forbidden_seq_checker_result and hairpin_checker_result and promoter_checker_result:
             return True
         print(codon_checker_result)

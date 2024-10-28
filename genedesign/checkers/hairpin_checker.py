@@ -29,12 +29,12 @@ def hairpin_checker(dna):
         
         # If more than 1 hairpin is found, return False and the problematic hairpin string
         if hairpin_count > 1:
-            return False, hairpin_string
+            return False, hairpin_string, hairpin_count
     
     # If no problematic hairpin chunk is found, return True and None
-    return True, None
+    return True, None, 0
 
 # Example usage
 if __name__ == "__main__":
-    result, hairpin = hairpin_checker("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCAAAAAAAGGGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-    print(result, hairpin)
+    result, hairpin, count = hairpin_checker("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCAAAAAAAGGGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    print(result, hairpin, count)

@@ -99,14 +99,17 @@ class TranscriptDesigner:
     
     def get_initial_cds(self, peptide : str):
         good_cds = False
-        while not good_cds:
+        for x in range(20):
             codons = []
             for x in range(2):
                 aa = peptide[x]
                 codon = self.guided_random(aa)
                 codons.extend(codon)
             good_cds = self.monster_checker(codons)
-        return codons
+            # print(good_cds)
+            if good_cds:
+                return codons
+        raise RecursionError('no good cds present')
             
     
     def monster_checker(self, cds) -> bool:
@@ -115,9 +118,14 @@ class TranscriptDesigner:
         codon_checker_result = self.codonChecker.run(cds)[0]
         forbidden_seq_checker_result = self.forbiddenSeqChecker.run(cds_str)[0]
         hairpin_checker_result = hairpin_checker(cds_str)[0]
+        
         promoter_checker_result = self.PromoterChecker.run(cds_str)[0]
         if codon_checker_result and forbidden_seq_checker_result and hairpin_checker_result and promoter_checker_result:
             return True
+        print(codon_checker_result)
+        print(forbidden_seq_checker_result)
+        print(hairpin_checker_result)
+        print(promoter_checker_result)
         return False
 if __name__ == "__main__":
     # Example usage of TranscriptDesigner

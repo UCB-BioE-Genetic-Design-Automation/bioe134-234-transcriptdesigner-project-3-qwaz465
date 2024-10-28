@@ -97,8 +97,9 @@ if __name__ == "__main__":
     codon_checker.initiate()
 
     # Hardcoded example CDS
-    cds = ['ATG', 'CAA', 'GGG', 'TAA']  # High CAI example
+    # cds = ['ATG', 'CAA', 'GGG', 'TAA']  # High CAI example
     # cds = ['AGG', 'AGA', 'AGG', 'AGA']  # Very low CAI example
+    cds = ['TGG', 'TGG', 'TGG']
     
     # Run CodonChecker
     codons_above_board, codon_diversity, rare_codon_count, cai_value = codon_checker.run(cds)

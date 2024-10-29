@@ -71,11 +71,11 @@ class TranscriptDesigner:
             optimized_codons = self.sliding_window(codons, aa_window)
             codons.extend(optimized_codons)
             #TODO look at step 3 in gpt chat and add it here
-            remaining_peptide = peptide[len(codons) // 3:]  # Remaining amino acids after full windows
-            if remaining_peptide:
-                # Use optimize_remaining for the last chunk of amino acids
-                remaining_codons = self.optimize_remaining(codons, remaining_peptide)
-                codons.extend(remaining_codons)
+        remaining_peptide = peptide[len(codons) // 3:]  # Remaining amino acids after full windows
+        if remaining_peptide:
+            # Use optimize_remaining for the last chunk of amino acids
+            remaining_codons = self.optimize_remaining(codons, remaining_peptide)
+            codons.extend(remaining_codons)
         
         cds = ''.join(codons)
 

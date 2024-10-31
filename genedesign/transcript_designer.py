@@ -19,6 +19,7 @@ class TranscriptDesigner:
         self.codonChecker = None
         self.forbiddenSeqChecker = None
         self.PromoterChecker = None
+        random.seed(1738)
     def initiate(self) -> None:
         """
         Initializes the codon map and the RBS chooser.
@@ -56,9 +57,9 @@ class TranscriptDesigner:
         Returns:
             Transcript: The transcript object with the selected RBS and translated codons.
         """
+        # TODO add 5th checker
         # put codons in here and then ''.join() when needed
         #should seed be here?
-        random.seed(1738)
         codons = self.get_initial_cds(peptide)
         # TODO implement sliding window search with prev codons, curr window, and downstream stuff, already set up monster checker
         length = len(peptide)
@@ -121,12 +122,8 @@ class TranscriptDesigner:
         most_checkers = -1
         for y in range(100):
             print(f"initial cds attempt {y}")
-            codons = []
-            for x in range(3):
-                aa = peptide[x]
-                codon = self.guided_random(aa)
-                print(codon)
-                codons.append(codon)
+            codons = [self.guided_random(peptide[x]) for x in range(3)]
+            print(codons)
             checker_passes = self.monster_checker(codons)
             print(f"checkers passed: {checker_passes}")
             # print(good_cds)
@@ -156,14 +153,10 @@ class TranscriptDesigner:
         # Optimize codons for all 9 amino acids in the window, considering upstream context
         for x in range(100):  # Try 100 times to find the best codons
             print(f"sliding window attempt {x}")
-            codons = upstream_codons.copy()  # Include upstream codons for context
-
+            codons = upstream_codons[:]  # Include upstream codons for context
             # Optimize codons for all 9 amino acids in the window
-            for aa in aa_window:
-                codon = self.guided_random(aa)
-                print(codon)
-                codons.append(codon)
-
+            codons.extend(self.guided_random(aa) for aa in aa_window)
+            print(codons)
             # Check the entire codon sequence (upstream + window) using the monster checker
             checker_passes = self.monster_checker(codons)
             print(f"checkers passed: {checker_passes}")
@@ -195,13 +188,11 @@ class TranscriptDesigner:
         best_codons = ''
         most_checkers = -1
 
-        # Handle the remaining amino acids
+        # Handle the remaining amino acids   
         for x in range(100):
             print(f"remaining attempt {x}")
-            for aa in remaining_peptide:
-                codon = self.guided_random(aa)
-                print(codon)
-                codons.append(codon)
+            codons = [self.guided_random(aa) for aa in remaining_peptide]
+            print(codons)
 
             # Run the monster_checker to ensure the remaining sequence passes the checks
             checker_passes = self.monster_checker(prev_codons + codons)

@@ -2,10 +2,11 @@ from genedesign.rbs_chooser import RBSChooser
 from genedesign.models.transcript import Transcript
 import csv
 import random
-from genedesign.checkers.codon_checker import CodonChecker
+from genedesign.checkers.codon_checker_window import CodonCheckerWindow
 from genedesign.checkers.forbidden_sequence_checker import ForbiddenSequenceChecker
 from genedesign.checkers.hairpin_checker import *
 from genedesign.checkers.internal_promoter_checker import PromoterChecker
+from genedesign.checkers.internal_rbs_checker import InternalRBSChecker
 
 class TranscriptDesigner:
     """
@@ -19,6 +20,7 @@ class TranscriptDesigner:
         self.codonChecker = None
         self.forbiddenSeqChecker = None
         self.PromoterChecker = None
+        self.rbsChecker = None
         random.seed(1738)
     def initiate(self) -> None:
         """
@@ -39,12 +41,14 @@ class TranscriptDesigner:
                 self.codonUsage[amino_acid][codon] = float(relative_frequency)
         self._generate_codon_lists()
         # boot up checkers
-        self.codonChecker = CodonChecker()
+        self.codonChecker = CodonCheckerWindow()
         self.codonChecker.initiate()
         self.forbiddenSeqChecker = ForbiddenSequenceChecker()
         self.forbiddenSeqChecker.initiate()
         self.PromoterChecker = PromoterChecker()
         self.PromoterChecker.initiate()
+        self.rbsChecker = InternalRBSChecker()
+        self.rbsChecker.initiate()
 
     def run(self, peptide: str, ignores: set) -> Transcript:
         """
@@ -57,7 +61,8 @@ class TranscriptDesigner:
         Returns:
             Transcript: The transcript object with the selected RBS and translated codons.
         """
-        # TODO add 5th checker
+        # TODO add 5th checker  
+        # TODO only check a few AAs back for preamble
         # put codons in here and then ''.join() when needed
         #should seed be here?
         codons = self.get_initial_cds(peptide)
@@ -72,12 +77,16 @@ class TranscriptDesigner:
             optimized_codons = self.sliding_window(codons, aa_window)
             codons.extend(optimized_codons)
             #TODO look at step 3 in gpt chat and add it here
-        remaining_peptide = peptide[len(codons) // 3:]  # Remaining amino acids after full windows
-        if remaining_peptide:
+            # take difference in list sizes for remaining_peptide then check indexs at the end
+        remaining_peptide_index = len(codons)  # Remaining amino acids after full windows
+        print(remaining_peptide_index) # this is how many are left
+        if remaining_peptide_index:
             # Use optimize_remaining for the last chunk of amino acids
-            remaining_codons = self.optimize_remaining(codons, remaining_peptide)
+            remaining_peptide = peptide[remaining_peptide_index:]
+            print(len)
+            remaining_codons = self.optimize_remaining(remaining_peptide)
             codons.extend(remaining_codons)
-        
+        print(f"starting pep length {len(peptide)} and end length {len(codons)}")
         cds = ''.join(codons)
 
         # Choose an RBS
@@ -128,7 +137,7 @@ class TranscriptDesigner:
             print(f"checkers passed: {checker_passes}")
             # print(good_cds)
             #TODO change this if adding checkers
-            if checker_passes == 4:
+            if checker_passes == 5:
                 return codons
             if checker_passes > most_checkers:
                 most_checkers = checker_passes
@@ -149,31 +158,54 @@ class TranscriptDesigner:
         """
         best_codons = ''
         most_checkers = -1
+        window_size = 3
+        downstream_aa_count = 6
 
-        # Optimize codons for all 9 amino acids in the window, considering upstream context
-        for x in range(100):  # Try 100 times to find the best codons
-            print(f"sliding window attempt {x}")
-            codons = upstream_codons[:]  # Include upstream codons for context
-            # Optimize codons for all 9 amino acids in the window
-            codons.extend(self.guided_random(aa) for aa in aa_window)
-            print(codons)
-            # Check the entire codon sequence (upstream + window) using the monster checker
-            checker_passes = self.monster_checker(codons)
-            print(f"checkers passed: {checker_passes}")
+        # Ensure the upstream codons are at least 6 long, pad if necessary
+        upstream_window_start = max(0, len(upstream_codons) - 6)
+        codons_before = upstream_codons[upstream_window_start:]
+
+        # Optimize codons for the current 9-amino-acid window
+        for attempt in range(100):  # Try 100 times to find the best codons
+            print(f"Sliding window attempt {attempt}")
+            current_codons = codons_before.copy()  # Include the 6 upstream codons for context
+            for x in current_codons:
+                print(f"previous codon : {x}")
+
+            # Optimize codons for the 9 amino acids in the window (first 3 are the current window)
+            window_codons = []
+            for aa in aa_window[:window_size]:  # Optimize for the first 3 amino acids
+                codon = self.guided_random(aa)
+                print(f"Window codon: {codon}")
+                window_codons.append(codon)
+
+            # Generate codons for the downstream 6 amino acids
+            downstream_codons = []
+            for aa in aa_window[window_size:window_size + downstream_aa_count]:
+                codon = self.guided_random(aa)
+                print(f"Downstream codon: {codon}")
+                downstream_codons.append(codon)
+
+            # Concatenate codons before, window codons, and downstream codons
+            full_sequence = current_codons + window_codons + downstream_codons
+
+            # Check the entire codon sequence (6 upstream + window + 6 downstream) using monster_checker
+            checker_passes = self.monster_checker(full_sequence)
+            print(f"Checkers passed: {checker_passes}")
 
             # If all checks pass, return the first 3 codons of the current window
-            if checker_passes == 4:  # Maximum score assumed to be 4
-                return codons[len(upstream_codons):len(upstream_codons) + 3]  # Return first 3 codons of the current window
+            if checker_passes == 5:  # Maximum score assumed to be 5
+                return window_codons
 
             # Keep track of the best codons if no perfect match
             if checker_passes > most_checkers:
                 most_checkers = checker_passes
-                best_codons = codons
+                best_codons = window_codons
 
         # Return the best codons for the first 3 amino acids if no perfect match was found
-        return best_codons[len(upstream_codons):len(upstream_codons) + 3]
+        return best_codons
     
-    def optimize_remaining(self, prev_codons, remaining_peptide):
+    def optimize_remaining(self, remaining_peptide):
         """
         Optimizes the codons for the remaining amino acids at the end of the peptide sequence.
 
@@ -190,17 +222,16 @@ class TranscriptDesigner:
 
         # Handle the remaining amino acids   
         for x in range(100):
-            print(f"remaining attempt {x}")
+            print(f"remaining attempt {x} with remaining length {len(remaining_peptide)}")
             codons = [self.guided_random(aa) for aa in remaining_peptide]
             print(codons)
 
             # Run the monster_checker to ensure the remaining sequence passes the checks
-            checker_passes = self.monster_checker(prev_codons + codons)
+            checker_passes = self.monster_checker(codons)
             print(f"checkers passed: {checker_passes}")
             # If all checks pass, return the first 3 codons of the current window
-            if checker_passes == 4:  # Maximum score assumed to be 4
+            if checker_passes == 5:  # Maximum score assumed to be 5
                 return codons  # Return first 3 codons of the current window
-
                 # Keep track of the best codons if no perfect match
             if checker_passes > most_checkers:
                 most_checkers = checker_passes
@@ -222,7 +253,13 @@ class TranscriptDesigner:
         hairpin_pass = hairpin_checker_result[0]
         hairpin_count = hairpin_checker_result[2]
         promoter_checker_pass = self.PromoterChecker.run(cds_str)[0]
-        return codon_checker_pass + forbidden_seq_pass + hairpin_pass + promoter_checker_pass
+        rbs_checker_pass = self.rbsChecker.run(cds_str)[0]
+        passes = [codon_checker_pass, forbidden_seq_pass, hairpin_pass, promoter_checker_pass, rbs_checker_pass]
+        checker_names = ['cai checker', 'forbidden seq checker', 'hairpin checker', 'promoter checker', 'rbs checker']
+        for x in range(5):
+            if passes[x] == False:
+                print(checker_names[x])
+        return codon_checker_pass + forbidden_seq_pass + hairpin_pass + promoter_checker_pass + rbs_checker_pass
 if __name__ == "__main__":
     # Example usage of TranscriptDesigner
     peptide = "MYPFIRTARMTV"

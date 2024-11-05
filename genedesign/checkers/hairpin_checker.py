@@ -29,10 +29,10 @@ def hairpin_checker(dna):
         
         # If more than 1 hairpin is found, return False and the problematic hairpin string
         if hairpin_count > 1:
-            return False, hairpin_string, hairpin_count
+            return False, hairpin_string
     
     # If no problematic hairpin chunk is found, return True and None
-    return True, None, 0
+    return True, None
 
 # Example usage
 if __name__ == "__main__":

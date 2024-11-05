@@ -79,14 +79,16 @@ class TranscriptDesigner:
             #TODO look at step 3 in gpt chat and add it here
             # take difference in list sizes for remaining_peptide then check indexs at the end
         remaining_peptide_index = len(codons)  # Remaining amino acids after full windows
-        print(remaining_peptide_index) # this is how many are left
+        print(remaining_peptide_index) # this is how many have been done
         if remaining_peptide_index:
             # Use optimize_remaining for the last chunk of amino acids
             remaining_peptide = peptide[remaining_peptide_index:]
-            print(len)
             remaining_codons = self.optimize_remaining(remaining_peptide)
             codons.extend(remaining_codons)
         print(f"starting pep length {len(peptide)} and end length {len(codons)}")
+        # adds 6 to transcript somehow, hopefully through the rbs???
+        stop_codon = self.guided_random('*')
+        codons.extend(stop_codon)
         cds = ''.join(codons)
 
         # Choose an RBS
@@ -251,7 +253,6 @@ class TranscriptDesigner:
         forbidden_seq_pass = forbidden_seq_checker_result[0]
         hairpin_checker_result = hairpin_checker(cds_str)
         hairpin_pass = hairpin_checker_result[0]
-        hairpin_count = hairpin_checker_result[2]
         promoter_checker_pass = self.PromoterChecker.run(cds_str)[0]
         rbs_checker_pass = self.rbsChecker.run(cds_str)[0]
         passes = [codon_checker_pass, forbidden_seq_pass, hairpin_pass, promoter_checker_pass, rbs_checker_pass]
